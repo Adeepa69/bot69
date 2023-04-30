@@ -1,13 +1,23 @@
+import os
 import discord
+from discord import app_commands
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 client = discord.Client(intents=intents)
 
+tree = app_commands.CommandTree(client)
+
+
+@tree.command(name="hello", description="Says hello to you")
+async def hello(ctx):
+    await ctx.send(f"Hello {ctx.author.mention}!")
+
 
 @client.event
 async def on_ready():
+    await tree.sync()
     print(f'We have logged in as {client.user}')
 
 
@@ -17,7 +27,7 @@ async def on_message(message):
         return
 
     if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
+        await message.reply('Hello!', mention_author=False)
 
 
-client.run("MTEwMTY1ODkzMzk0MjMwNDgwMA.G3fGrj.yiZoMj4oVzSwmUqJN7akB0-LV8WfZbKQX2K-f8")
+client.run(os.environ.get("Discord"))
