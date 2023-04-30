@@ -11,8 +11,8 @@ tree = app_commands.CommandTree(client)
 
 
 @tree.command(name="hello", description="Says hello to you")
-async def hello(ctx):
-    await ctx.send(f"Hello {ctx.author.mention}!")
+async def hello(interaction: discord, test: str):
+    await interaction.response.send_message(test)
 
 
 @client.event
@@ -21,13 +21,13 @@ async def on_ready():
     print(f'We have logged in as {client.user}')
 
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.content.startswith('$hello'):
-        await message.reply('Hello!', mention_author=False)
+# @client.event
+# async def on_message(message):
+#     if message.author == client.user:
+#         return
+#
+#     if message.content.startswith('$hello'):
+#         await message.reply('Hello!', mention_author=False)
 
 
 client.run(os.environ.get("Discord"))
