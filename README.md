@@ -6,7 +6,6 @@ Some features that the bot includes:
 
 Some features that are yet-to-be-added include:
 - Message retention policy (delete message after x days)
-- Clear messages history by @ user
 
 Some features that is being experimented:
 - Downloading video and music media from a link (using yt-dlp library)
