@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta
-
 import discord
+import json
 from discord import app_commands
 from discord.ext import tasks
+from datetime import datetime, timedelta
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -11,12 +11,23 @@ client = discord.Client(intents=intents)
 
 tree = app_commands.CommandTree(client)
 
-# Dictionary that determines how long messages should last in a server
-server_policy = {
-}
+# Dictionary that determines how long messages should last in the server
+# Read from server_policy file and store it in a dictionary
+with open('server_policy', 'r') as file:
+    # Convert the string to a dictionary
+    server_policy = eval(file.read())
+
+print(server_policy)
 
 
 @tasks.loop(hours=1)
+# Write to server-policy file every hour
+async def backup_server_policy():
+    with open('server_policy', 'w') as policy_file:
+        policy_file.write(json.dumps(server_policy))
+
+
+# Clean up messages every hour
 async def clear_messages():
     # Check server_policy for the message history of each server
     for server in server_policy:
