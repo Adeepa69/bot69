@@ -1,8 +1,9 @@
 import asyncio
+from datetime import datetime, timedelta
+
 import discord
 from discord import app_commands
 from discord.ext import tasks
-from datetime import datetime, timedelta
 
 # Define normal Discord stuff
 intents = discord.Intents.default()
@@ -128,6 +129,7 @@ async def remove_history(interaction: discord):
         duration = timedelta(minutes=30)
         expiration_time: datetime = discord.utils.utcnow() + duration
         await interaction.user.timeout(expiration_time)
+
 
 # Runs as soon as the code is ready
 @client.event
