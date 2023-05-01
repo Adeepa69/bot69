@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta
+
 import discord
 from discord import app_commands
-from datetime import datetime, timedelta
+from discord.ext import tasks
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -9,8 +11,37 @@ client = discord.Client(intents=intents)
 
 tree = app_commands.CommandTree(client)
 
+# Dictionary that determines how long messages should last in a server
+server_policy = {
+}
 
-# Sync all app commands to Discord
+
+@tasks.loop(hours=1)
+async def clear_messages():
+    # Check server_policy for the message history of each server
+    for server in server_policy:
+        # Get the server object
+        guild = client.get_guild(server)
+        # Loop through each text channel, making sure to leave out voice channels, forums and announcements
+        for channel in guild.text_channels:
+            # Purge the channel by the message history, but we need a function to check whether to delete the message
+            await channel.purge(limit=10, check=check)
+
+
+def check(message: discord.Message):
+    # Get the server object
+    guild = message.guild
+    # Get the message history of the server
+    history_policy = server_policy[guild.id]
+    # Get the time the message was sent
+    time = message.created_at
+    # Get the current time
+    now = discord.utils.utcnow()
+    # Check if the message was sent before the message history
+    if (now - time).days > history_policy:
+        return True
+    else:
+        return False
 
 
 @tree.command(name="hello", description="Says hello to you")
@@ -34,6 +65,8 @@ async def clear(interaction: discord, amount: int):
 async def history(interaction: discord, length: int):
     # Check that the use has the administrator permission to use it
     if interaction.user.guild_permissions.administrator:
+        # Add the server id to dictionary and set the message_history alongside it
+        server_policy.update({interaction.guild.id: length})
         await interaction.response.send_message(f"Set the message history of this server to {length} days",
                                                 ephemeral=True)
     else:
