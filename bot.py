@@ -96,14 +96,14 @@ async def history(interaction: discord, length: int):
     # Check that the use has the administrator permission to use it
     if interaction.user.guild_permissions.administrator:
         # Check if the user is asking for an unreasonable length of time (longer than 14 days)
-        if length > 14:
+        if length < 14:
             # Add the server id to dictionary and set the message_history alongside it
             server_policy.update({interaction.guild.id: length})
             await interaction.response.send_message(f"Set the message history of this server to {length} days",
                                                     ephemeral=True)
         else:
             await interaction.response.send_message("I cannot delete messages longer than 14 days, pick a number lower"
-                                                    "than 14")
+                                                    " than 14", ephemeral=True)
     else:
         # Timeout those who mess with admin settings
         duration = timedelta(minutes=30)
