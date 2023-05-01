@@ -1,5 +1,5 @@
+import asyncio
 import discord
-import json
 from discord import app_commands
 from discord.ext import tasks
 from datetime import datetime, timedelta
@@ -12,20 +12,30 @@ client = discord.Client(intents=intents)
 
 tree = app_commands.CommandTree(client)
 
-# Dictionary that determines how long messages should last in the server
-# Read from server_policy file and store it in a dictionary
-with open('server_policy', 'r') as file:
-    # Convert the string to a dictionary
-    server_policy = eval(file.read())
 
-print(server_policy)
+# If there is no dictionary, then create one to prevent errors
+try:
+    # Dictionary that determines how long messages should last in the server
+    # Read from server_policy file and store it in a dictionary
+    with open('server_policy', 'r') as file:
+        # Convert the string to a dictionary
+        server_policy = eval(file.read())
+except FileNotFoundError:
+    server_policy = {}
+except SyntaxError:
+    server_policy = {}
+
 
 # Run this task every hour and run functions inside the main function below this decorator
-@tasks.loop(hours=1)
+@tasks.loop(minutes=1)
+async def hourly_schedule():
+    await asyncio.gather(backup_server_policy(), clear_messages())
+
+
 # Write to server-policy file as backup
 async def backup_server_policy():
     with open('server_policy', 'w') as policy_file:
-        policy_file.write(json.dumps(server_policy))
+        policy_file.write(str(server_policy))
 
 
 # Clean up messages
@@ -34,13 +44,18 @@ async def clear_messages():
     for server in server_policy:
         # Get the server object
         guild = client.get_guild(server)
-        # Loop through each text channel, making sure to leave out voice channels, forums and announcements
-        for channel in guild.text_channels:
-            # Purge the channel by the message history, but we need a function to check whether to delete the message
-            await channel.purge(limit=10, check=check)
+        # If no servers have a message history, then return
+        if guild is None:
+            return
+        else:
+            # Loop through each text channel, making sure to leave out voice channels, forums and announcements
+            for channel in guild.text_channels:
+                # Purge the channel by the message history, but we need a function to check whether to delete the
+                # message
+                await channel.purge(limit=100, check=check)
 
 
-# Check the message is older than the set amount of days
+# Check the message is older than the set number of days
 def check(message: discord.Message):
     # Get the server object
     guild = message.guild
@@ -95,6 +110,7 @@ async def history(interaction: discord, length: int):
 async def on_ready():
     await tree.sync()
     print(f'We have logged in as {client.user}')
+    hourly_schedule.start()
 
 
 client.run(open('token', 'r').read())
