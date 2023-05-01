@@ -1,6 +1,6 @@
-import os
 import discord
 from discord import app_commands
+from datetime import datetime, timedelta
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -8,6 +8,9 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 tree = app_commands.CommandTree(client)
+
+# Sync all app commands to Discord
+
 
 
 @tree.command(name="hello", description="Says hello to you")
@@ -34,8 +37,9 @@ async def history(interaction: discord, length: int):
         await interaction.response.send_message(f"Set the message history of this server to {length} days",
                                                 ephemeral=True)
     else:
-        # TODO: How to timeout for 15 minutes?
-        await interaction.user.timeout()
+        duration = timedelta(minutes=30)
+        expiration_time: datetime = discord.utils.utcnow() + duration
+        await interaction.user.timeout(expiration_time)
 
 
 @client.event
