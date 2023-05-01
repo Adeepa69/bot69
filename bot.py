@@ -9,8 +9,8 @@ client = discord.Client(intents=intents)
 
 tree = app_commands.CommandTree(client)
 
-# Sync all app commands to Discord
 
+# Sync all app commands to Discord
 
 
 @tree.command(name="hello", description="Says hello to you")
