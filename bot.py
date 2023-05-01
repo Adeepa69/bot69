@@ -12,7 +12,6 @@ client = discord.Client(intents=intents)
 
 tree = app_commands.CommandTree(client)
 
-
 # If there is no dictionary, then create one to prevent errors
 try:
     # Dictionary that determines how long messages should last in the server
@@ -27,7 +26,7 @@ except SyntaxError:
 
 
 # Run this task every hour and run functions inside the main function below this decorator
-@tasks.loop(minutes=1)
+@tasks.loop(hours=1)
 async def hourly_schedule():
     await asyncio.gather(backup_server_policy(), clear_messages())
 
@@ -50,8 +49,7 @@ async def clear_messages():
         else:
             # Loop through each text channel, making sure to leave out voice channels, forums and announcements
             for channel in guild.text_channels:
-                # Purge the channel by the message history, but we need a function to check whether to delete the
-                # message
+                # Purge the channel by the message history
                 await channel.purge(limit=100, check=check)
 
 
@@ -83,27 +81,53 @@ async def hello(interaction: discord, text: str):
 async def clear(interaction: discord, amount: int):
     # We need to validate the user's permissions that they have the manage_messages permission
     if interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message(f"Cleaning up {amount} messages, hold tight!", ephemeral=True)
         await interaction.channel.purge(limit=amount)
-        await interaction.response.send_message(f"Cleared {amount} messages", ephemeral=True)
     else:
         await interaction.response.send_message('fuck you', ephemeral=False)
 
 
 # Make a command that sets a server's message history, i.e. the time a message can last before the bot deletes it
 # automatically
-@tree.command(name="message_history", description="Sets the length of how long messages should last in your server")
+@tree.command(name="disappearing_messages", description="Sets the length of how long messages should last in your "
+                                                        "server")
 async def history(interaction: discord, length: int):
     # Check that the use has the administrator permission to use it
     if interaction.user.guild_permissions.administrator:
-        # Add the server id to dictionary and set the message_history alongside it
-        server_policy.update({interaction.guild.id: length})
-        await interaction.response.send_message(f"Set the message history of this server to {length} days",
-                                                ephemeral=True)
+        # Check if the user is asking for an unreasonable length of time (longer than 14 days)
+        if length > 14:
+            # Add the server id to dictionary and set the message_history alongside it
+            server_policy.update({interaction.guild.id: length})
+            await interaction.response.send_message(f"Set the message history of this server to {length} days",
+                                                    ephemeral=True)
+        else:
+            await interaction.response.send_message("I cannot delete messages longer than 14 days, pick a number lower"
+                                                    "than 14")
     else:
+        # Timeout those who mess with admin settings
         duration = timedelta(minutes=30)
         expiration_time: datetime = discord.utils.utcnow() + duration
         await interaction.user.timeout(expiration_time)
 
+
+@tree.command(name="remove_disappearing_messages", description="Removes the disappearing messages feature of your "
+                                                               "server")
+async def remove_history(interaction: discord):
+    # Check that the use has the administrator permission to use it
+    if interaction.user.guild_permissions.administrator:
+        # Check if the server has enabled the disappearing messages feature
+        if interaction.guild.id in server_policy:
+            # Remove the server id from the dictionary
+            server_policy.pop(interaction.guild.id)
+            await interaction.response.send_message(f"Removed the message history of this server",
+                                                    ephemeral=True)
+        else:
+            await interaction.response.send_message("This server does not have a message history", ephemeral=True)
+    else:
+        # Timeout those who mess with admin settings
+        duration = timedelta(minutes=30)
+        expiration_time: datetime = discord.utils.utcnow() + duration
+        await interaction.user.timeout(expiration_time)
 
 # Runs as soon as the code is ready
 @client.event
