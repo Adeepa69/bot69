@@ -16,6 +16,14 @@ tree = app_commands.CommandTree(client)
 
 media_queue = []
 
+# Downloads folder regulation
+if not os.path.exists("downloads"):
+    os.mkdir("downloads")
+else:
+    # Clear the downloads folder
+    for file in os.listdir("downloads"):
+        os.remove(f"downloads/{file}")
+
 # If there is no dictionary, then create one to prevent errors
 try:
     # Dictionary that determines how long messages should last in the server
@@ -136,7 +144,7 @@ async def remove_history(interaction: discord):
 
 # A command that allows people to download videos from YouTube using yt-dlp
 # Flowchart: Queue task -> Download video -> Upload video -> Delete video
-@tree.command(name="youtube-download", description="Downloads a video from YouTube")
+@tree.command(name="download-video", description="Downloads a video from YouTube")
 async def download(interaction: discord, url: str):
     if interaction.user.id in media_queue:
         await interaction.response.send_message("You have already queued media, please wait for it to finish",
@@ -149,13 +157,16 @@ async def download(interaction: discord, url: str):
         await interaction.response.send_message("Your video has been queued, hold tight!",
                                                 ephemeral=False)
         # Save the video name to be deleted later
-        video_name = url.split("=")[1] + str(interaction.user.id) + ".mp4"
+        video_name = str(interaction.user.id) + ".mp4"
         # Download the video that satisfies the 25MB limit and is in mp4 format
-        await asyncio.create_subprocess_shell(f'yt-dlp -f "best[filesize<25M]" {url} -o {video_name}')
-        # Upload the video
-        # await interaction.channel.send(file=discord.File(video_name))
+        process = await asyncio.create_subprocess_shell(
+            f'cd downloads && yt-dlp -f "best[filesize<25M]" {url} -o {video_name}')
+        # Wait for the video to download
+        await process.wait()
+        # Upload the file
+        await interaction.channel.send(file=discord.File(f"downloads/{video_name}"))
         # Delete the video
-        os.remove(video_name)
+        os.remove(f"downloads/{video_name}")
         # Remove the user from the queue
         media_queue.remove(interaction.user.id)
 
@@ -175,14 +186,16 @@ async def download_music(interaction: discord, url: str):
         await interaction.response.send_message("Your music has been queued, hold tight!",
                                                 ephemeral=False)
         # Save the music name to be deleted later
-        music_name = url.split("=")[1] + str(interaction.user.id) + ".mp3"
+        music_name = str(interaction.user.id) + ".mp3"
         # Download music that satisfies the 25MB limit
-        await asyncio.create_subprocess_shell(
-            f'yt-dlp -f "best[filesize<25M]" -x --audio-format mp3 {url} -o {music_name}')
+        process = await asyncio.create_subprocess_shell(
+            f'cd downloads && yt-dlp -f "best[filesize<25M]" -x --audio-format mp3 {url} -o {music_name}')
+        # Wait for the music to download
+        await process.wait()
         # Upload the music
-        await interaction.channel.send(file=discord.File(music_name))
+        await interaction.channel.send(file=discord.File(f"downloads/{music_name}"))
         # Delete the music
-        os.remove(music_name)
+        os.remove(f"downloads/{music_name}")
         # Remove the user from the queue
         media_queue.remove(interaction.user.id)
 
@@ -193,12 +206,6 @@ async def on_ready():
     await tree.sync()
     print(f'We have logged in as {client.user}')
     hourly_schedule.start()
-    # If there are incomplete videos in the queue, then delete them
-    if len(media_queue) > 0:
-        for user in media_queue:
-            video_name = str(user) + ".mp4"
-            os.remove(video_name)
-        media_queue.clear()
 
 
 client.run(open('token', 'r').read())
