@@ -1,9 +1,7 @@
 name: Create Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,12 +9,13 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3.5.2
 
     - name: Download main.py
       run: curl -O https://raw.githubusercontent.com/Adeepa69/bot69/main/bot.py
 
     - name: Create Release
+      if: github.event_name == 'workflow_dispatch'
       id: create_release
       uses: actions/create-release@v1.0.0
       env:
