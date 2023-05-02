@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime, timedelta
 
 import discord
@@ -12,6 +13,8 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 tree = app_commands.CommandTree(client)
+
+media_queue = []
 
 # If there is no dictionary, then create one to prevent errors
 try:
@@ -131,12 +134,63 @@ async def remove_history(interaction: discord):
         await interaction.user.timeout(expiration_time)
 
 
+# A command that allows people to download videos from YouTube using yt-dlp
+# Flowchart: Queue task -> Download video -> Upload video -> Delete video
+@tree.command(name="youtube-download", description="Downloads a video from YouTube")
+async def download(interaction: discord, url: str):
+    if interaction.user.id in media_queue:
+        await interaction.response.send_message("You have already queued media, please wait for it to finish",
+                                                ephemeral=True)
+    # Check that the user hasn't queued a video already
+    else:
+        # Add the user to the queue
+        media_queue.append(interaction.user.id)
+        # Send a message to the user that their video has been queued
+        await interaction.response.send_message("Your video has been queued, hold tight!",
+                                                ephemeral=False)
+        # Save the video name to be deleted later
+        video_name = url.split("=")[1] + str(interaction.user.id) + ".mp4"
+        # Download the video that satisfies the 25MB limit and is in mp4 format
+        await asyncio.create_subprocess_shell(f'yt-dlp -f "best[filesize<25M]" {url} -o {video_name}')
+        # Upload the video
+        # await interaction.channel.send(file=discord.File(video_name))
+        # Delete the video
+        os.remove(video_name)
+        # Remove the user from the queue
+        media_queue.remove(interaction.user.id)
+
+
+# A command that allows people to download music from YouTube using yt-dlp (use -x for extract audio function)
+# Flowchart: Queue task -> Download video -> Upload video -> Delete video
+@tree.command(name="download-music", description="Download music anywhere")
+async def download_music(interaction: discord, url: str):
+    if interaction.user.id in media_queue:
+        await interaction.response.send_message("You have already queued media, please wait for it to finish",
+                                                ephemeral=True)
+    # Check that the user hasn't queued a video already
+    else:
+        # Add the user to the queue
+        media_queue.append(interaction.user.id)
+        # Send a message to the user that their video has been queued
+        await interaction.response.send_message("Your music has been queued, hold tight!",
+                                                ephemeral=False)
+        # Save the music name to be deleted later
+        video_name = url.split("=")[1] + str(interaction.user.id) + ".mp3"
+        # Download music that satisfies the 25MB limit
+
+
 # Runs as soon as the code is ready
 @client.event
 async def on_ready():
     await tree.sync()
     print(f'We have logged in as {client.user}')
     hourly_schedule.start()
+    # If there are incomplete videos in the queue, then delete them
+    if len(media_queue) > 0:
+        for user in media_queue:
+            video_name = str(user) + ".mp4"
+            os.remove(video_name)
+        media_queue.clear()
 
 
 client.run(open('token', 'r').read())
