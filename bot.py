@@ -175,8 +175,16 @@ async def download_music(interaction: discord, url: str):
         await interaction.response.send_message("Your music has been queued, hold tight!",
                                                 ephemeral=False)
         # Save the music name to be deleted later
-        video_name = url.split("=")[1] + str(interaction.user.id) + ".mp3"
+        music_name = url.split("=")[1] + str(interaction.user.id) + ".mp3"
         # Download music that satisfies the 25MB limit
+        await asyncio.create_subprocess_shell(
+            f'yt-dlp -f "best[filesize<25M]" -x --audio-format mp3 {url} -o {music_name}')
+        # Upload the music
+        await interaction.channel.send(file=discord.File(music_name))
+        # Delete the music
+        os.remove(music_name)
+        # Remove the user from the queue
+        media_queue.remove(interaction.user.id)
 
 
 # Runs as soon as the code is ready
