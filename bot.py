@@ -163,14 +163,16 @@ async def download(interaction: discord, url: str):
             f'"filesize~20MB" {url}')
         # Wait for the video to download
         await process.wait()
-        print(process.returncode)
-        # Save the name of the video
-        video_name = os.listdir(f"downloads/{interaction.user.id}")[0]
-        # Upload the file
-        await interaction.channel.send(f"Requested by {interaction.user}!",
-                                       file=discord.File(f"downloads/{interaction.user.id}/{video_name}"))
-        # Delete the video
-        os.remove(f"downloads/{interaction.user.id}/{video_name}")
+        if process.returncode == 0:
+            # Save the name of the video
+            video_name = os.listdir(f"downloads/{interaction.user.id}")[0]
+            # Upload the file
+            await interaction.channel.send(f"Requested by {interaction.user}!",
+                                           file=discord.File(f"downloads/{interaction.user.id}/{video_name}"))
+            # Delete the video
+            os.remove(f"downloads/{interaction.user.id}/{video_name}")
+        else:
+            await interaction.channel.send(f"<@{interaction.user.id}>, your video could not be downloaded")
         # Remove the user from the queue
         media_queue.remove(interaction.user.id)
 
