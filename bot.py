@@ -1,5 +1,6 @@
 import asyncio
 import os
+import shutil
 from datetime import datetime, timedelta
 
 import discord
@@ -20,9 +21,9 @@ media_queue = []
 if not os.path.exists("downloads"):
     os.mkdir("downloads")
 else:
-    # Clear the downloads folder
-    for file in os.listdir("downloads"):
-        os.remove(f"downloads/{file}")
+    # Remove the download folder and create a new one
+    shutil.rmtree("downloads")
+    os.mkdir("downloads")
 
 # If there is no dictionary, then create one to prevent errors
 try:
@@ -155,18 +156,21 @@ async def download(interaction: discord, url: str):
         media_queue.append(interaction.user.id)
         # Send a message to the user that their video has been queued
         await interaction.response.send_message("Your video has been queued, hold tight!",
-                                                ephemeral=False)
-        # Save the video name to be deleted later
-        video_name = str(interaction.user.id) + ".mp4"
+                                                ephemeral=True)
         # Download the video that satisfies the 25MB limit and is in mp4 format
         process = await asyncio.create_subprocess_shell(
-            f'cd downloads && yt-dlp -f "best[filesize<25M]" {url} -o {video_name}')
+            f'cd downloads && mkdir {interaction.user.id} && cd {interaction.user.id} && yt-dlp -f mp4 -S '
+            f'"filesize~20MB" {url}')
         # Wait for the video to download
         await process.wait()
+        print(process.returncode)
+        # Save the name of the video
+        video_name = os.listdir(f"downloads/{interaction.user.id}")[0]
         # Upload the file
-        await interaction.channel.send(file=discord.File(f"downloads/{video_name}"))
+        await interaction.channel.send(f"Requested by {interaction.user}!",
+                                       file=discord.File(f"downloads/{interaction.user.id}/{video_name}"))
         # Delete the video
-        os.remove(f"downloads/{video_name}")
+        os.remove(f"downloads/{interaction.user.id}/{video_name}")
         # Remove the user from the queue
         media_queue.remove(interaction.user.id)
 
@@ -184,7 +188,7 @@ async def download_music(interaction: discord, url: str):
         media_queue.append(interaction.user.id)
         # Send a message to the user that their video has been queued
         await interaction.response.send_message("Your music has been queued, hold tight!",
-                                                ephemeral=False)
+                                                ephemeral=True)
         # Save the music name to be deleted later
         music_name = str(interaction.user.id) + ".mp3"
         # Download music that satisfies the 25MB limit
@@ -193,6 +197,7 @@ async def download_music(interaction: discord, url: str):
         # Wait for the music to download
         await process.wait()
         # Upload the music
+        await interaction.channel.send(f"Requested by {interaction.user.mention}")
         await interaction.channel.send(file=discord.File(f"downloads/{music_name}"))
         # Delete the music
         os.remove(f"downloads/{music_name}")
